@@ -1,0 +1,113 @@
+-- CRC-32 (IEEE 802.3, the checksum of zlib, gzip and PNG): the crate's
+-- `Hasher`, and its way of combining two checksums.
+--
+-- Copyright Sam Rijs and Alex Crichton, and the Meadow port's authors.
+-- Dual-licensed under Apache-2.0 or MIT: see COPYRIGHT.
+
+use Std.St as St
+
+def poly = toUInt32 0xEDB88320
+
+def ones = toUInt32 0xFFFFFFFF
+
+-- The byte-at-a-time table: each byte's contribution.
+def table =
+  runSt (\() ->
+    let t = St.newArray 256 (toUInt32 0) in
+    let _ =
+      St.forRange 0 256 (\n ->
+        let step = \c -> if bitAnd c (toUInt32 1) != toUInt32 0 then bitXor poly (c >> 1) else c >> 1 in
+        let rec go k c = if k >= 8 then c else go (k + 1) (step c) in
+        St.set t n (go 0 (toUInt32 n)))
+    in
+    St.freeze t)
+
+-- `prev` extended by `bytes`.
+fun updateState prev (bytes : #[UInt8]) =
+  let n = arrayLen bytes in
+  let rec go i crc =
+    if i >= n
+    then crc
+    else
+      let index = toInt (bitAnd (bitXor crc (toUInt32 (arrayGet bytes i))) (toUInt32 0xFF)) in
+      go (i + 1) (bitXor (arrayGet table index) (crc >> 8))
+  in
+  bitXor (go 0 (bitXor prev ones)) ones
+
+-- The checksum of `bytes`.
+@pub fun hash (bytes : #[UInt8]) = updateState (toUInt32 0) bytes
+
+-- The checksum of the UTF-8 of `s`.
+@pub fun hashString s = hash (stringToBytes s)
+
+-- A checksum being computed: the state so far, and how many bytes it covers.
+@pub record Hasher = { state : UInt32, amount : UInt64 }
+
+@pub def newHasher = Hasher { state = toUInt32 0, amount = toUInt64 0 }
+
+-- A hasher that continues from the checksum `init`.
+@pub fun newWithInitial init = Hasher { state = init, amount = toUInt64 0 }
+
+-- A hasher that continues from the checksum `init` of `amount` bytes, as
+-- `combine` needs to know.
+@pub fun newWithInitialLen init amount = Hasher { state = init, amount = amount }
+
+-- `h` with `bytes` added.
+@pub fun update (h : Hasher) (bytes : #[UInt8]) =
+  Hasher { state = updateState h.state bytes, amount = h.amount + toUInt64 (arrayLen bytes) }
+
+-- The checksum so far.
+@pub fun finalize (h : Hasher) = h.state
+
+-- A hasher back at the start.
+@pub fun reset (h : Hasher) = newHasher
+
+-- --- combining ----------------------------------------------------------------------------
+
+-- x^(2^n) modulo the polynomial, for n from 3 to 34 (so, bytes).
+def x2n =
+  #[
+    toUInt32 0x00800000, toUInt32 0x00008000, toUInt32 0xedb88320, toUInt32 0xb1e6b092,
+    toUInt32 0xa06a2517, toUInt32 0xed627dae, toUInt32 0x88d14467, toUInt32 0xd7bbfe6a,
+    toUInt32 0xec447f11, toUInt32 0x8e7ea170, toUInt32 0x6427800e, toUInt32 0x4d47bae0,
+    toUInt32 0x09fe548f, toUInt32 0x83852d0f, toUInt32 0x30362f1a, toUInt32 0x7b5a9cc3,
+    toUInt32 0x31fec169, toUInt32 0x9fec022a, toUInt32 0x6c8dedc4, toUInt32 0x15d6874d,
+    toUInt32 0x5fde7a4e, toUInt32 0xbad90e37, toUInt32 0x2e4e5eef, toUInt32 0x4eaba214,
+    toUInt32 0xa8a472c0, toUInt32 0x429a969e, toUInt32 0x148d302a, toUInt32 0xc40ba6d0,
+    toUInt32 0xc4e22c3c, toUInt32 0x40000000, toUInt32 0x20000000, toUInt32 0x08000000
+  ]
+
+-- `a` times `b`, modulo the polynomial.
+fun multiply a b =
+  let zero = toUInt32 0 in
+  let one = toUInt32 1 in
+  let rec go i p b2 =
+    if i >= 32
+    then p
+    else
+      let bit = bitAnd (a >> (31 - i)) one in
+      let p2 = if bit != zero then bitXor p b2 else p in
+      let b3 = if bitAnd b2 one != zero then bitXor (b2 >> 1) poly else b2 >> 1 in
+      go (i + 1) p2 b3
+  in
+  go 0 zero b
+
+-- The checksum of the bytes of `crc1` followed by those of `crc2`, which are
+-- `len2` long.
+@pub fun combineChecksums crc1 crc2 len2 =
+  let zero = toUInt64 0 in
+  if len2 == zero
+  then crc1
+  else
+    let rec go i p =
+      if i >= 64 or (len2 >> i) == zero
+      then p
+      else
+        let set = bitAnd (len2 >> i) (toUInt64 1) != zero in
+        go (i + 1) (if set then multiply (arrayGet x2n (i % 32)) p else p)
+    in
+    bitXor (go 0 crc1) crc2
+
+-- `a` extended by whatever `b` covered.
+@pub fun combine (a : Hasher) (b : Hasher) =
+  Hasher { state = combineChecksums a.state b.state b.amount, amount = a.amount + b.amount }

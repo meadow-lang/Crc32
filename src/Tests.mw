@@ -1,0 +1,105 @@
+-- The port against the crate: every case in `Cases.mw`, whose expected
+-- checksums came from calling crc32fast itself, plus a few examples.
+--
+-- Every declaration carries `@cfg(test)`, as the tests are no part of the
+-- package.
+
+@cfg(test)
+use Std.Test (assertEq)
+@cfg(test)
+use Std.Collections.Vector as V
+@cfg(test)
+use Std.St as St
+@cfg(test)
+use crc32.Cases (cases)
+@cfg(test)
+use crc32.Crc32
+
+@cfg(test)
+fun digit i = toInt (stringByteAt cases i) - 48
+
+@cfg(test)
+fun num i n =
+  let rec go k acc = if k >= n then acc else go (k + 1) (acc * 64 + digit (i + k)) in
+  (go 0 0, i + n)
+
+@cfg(test)
+fun str i =
+  let len = fst (num i 3) in
+  (stringSlice cases (i + 3) (i + 3 + len), i + 3 + len)
+
+@cfg(test)
+fun hexValue c = if c <= 57 then c - 48 else c - 87
+
+@cfg(test)
+fun unhex s =
+  runSt (\() ->
+    let n = stringByteLength s / 2 in
+    let buf = St.newArray n (toUInt8 0) in
+    let at = \i -> hexValue (toInt (stringByteAt s i)) in
+    let _ = St.forRange 0 n (\k -> St.set buf k (toUInt8 (at (2 * k) * 16 + at (2 * k + 1)))) in
+    St.freeze buf)
+
+-- A decimal number, as a 64-bit one.
+@cfg(test)
+fun decimal s =
+  let digitAt = \i -> toUInt64 (toInt (stringByteAt s i) - 48) in
+  let rec go i acc = if i >= stringByteLength s then acc else go (i + 1) (acc * toUInt64 10 + digitAt i) in
+  go 0 (toUInt64 0)
+
+@cfg(test)
+fun runCase i =
+  let kind = fst (num i 1) in
+  if kind == 0
+  then
+    let input = str (i + 1) in
+    let whole = str (snd input) in
+    let split = num (snd whole) 3 in
+    let init = str (snd split) in
+    let pieces = str (snd init) in
+    let b = unhex (fst input) in
+    let n = arrayLen b in
+    let h0 = newWithInitial (toUInt32 (decimal (fst init))) in
+    let h1 = update h0 (arraySlice b 0 (fst split)) in
+    let h2 = update h1 (arraySlice b (fst split) n) in
+    let want = [fst whole, fst pieces] in
+    let got = ["${hash b}", "${finalize h2}"] in
+    (fst input, want, got, snd pieces)
+  else if kind == 1
+  then
+    let a = str (i + 1) in
+    let b = str (snd a) in
+    let expected = str (snd b) in
+    let ha = update newHasher (unhex (fst a)) in
+    let hb = update newHasher (unhex (fst b)) in
+    (fst a ++ " + " ++ fst b, [fst expected], ["${finalize (combine ha hb)}"], snd expected)
+  else
+    let c1 = str (i + 1) in
+    let c2 = str (snd c1) in
+    let len = str (snd c2) in
+    let expected = str (snd len) in
+    let a = newWithInitialLen (toUInt32 (decimal (fst c1))) (toUInt64 0) in
+    let b = newWithInitialLen (toUInt32 (decimal (fst c2))) (decimal (fst len)) in
+    let label = fst c1 ++ " " ++ fst c2 ++ " " ++ fst len in
+    (label, [fst expected], ["${finalize (combine a b)}"], snd expected)
+
+@cfg(test)
+fun check i bad =
+  if i >= stringByteLength cases
+  then bad
+  else
+    match runCase i with
+    | (input, expected, got, next) ->
+        check next (if expected == got then bad else V.pushBack bad (input, expected, got))
+
+-- Failures list (input, expected, actual).
+@cfg(test)
+@test fun resultsMatchTheCrate () =
+  assertEq (V.take (check 0 V.empty) 3) [] "cases where the port and crc32fast differ"
+
+@cfg(test)
+@test fun examples () =
+  let a = assertEq (hashString "hello world") (toUInt32 0x0D4A1185) "hello world" in
+  let b = assertEq (hashString "") (toUInt32 0) "empty" in
+  let h = update (update newHasher (stringToBytes "hello")) (stringToBytes " world") in
+  assertEq (finalize h) (toUInt32 0x0D4A1185) "in pieces"

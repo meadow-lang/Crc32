@@ -1,0 +1,14 @@
+-- crc32: the CRC-32 checksum of zlib, gzip and PNG. A port of Rust's
+-- `crc32fast` crate, version 1.5.2.
+--
+--   use crc32 (hashString)
+--
+--   hashString "hello world"  -- 222957957 (0x0D4A1185)
+
+mod Crc32
+@cfg(test)
+mod Cases
+@cfg(test)
+mod Tests
+
+@pub use crc32.Crc32

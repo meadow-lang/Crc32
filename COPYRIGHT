@@ -1,0 +1,8 @@
+crc32 (the Meadow package) is a port of the Rust crate crc32fast
+(https://github.com/srijs/rust-crc32fast), version 1.5.2, to Meadow. Its test
+cases are generated from that crate, and its code is translated from the
+crate's portable implementation.
+
+The crate is Copyright (c) 2018 Sam Rijs, Alex Crichton and contributors, and
+is dual-licensed under the Apache License, Version 2.0, and the MIT license.
+So is this port, at your option: see LICENSE-APACHE and LICENSE-MIT.
