@@ -9,13 +9,13 @@ This package is a port of Rust's
 ## Install
 
 ```sh
-meadow add mcdearman/meadow-crc32
+meadow add mcdearman/MeadowCrc32
 ```
 
 ## Use
 
 ```meadow
-use crc32 (hashString, newHasher, update, finalize)
+use Crc32 (hashString, newHasher, update, finalize)
 
 def main =
   ( hashString "hello world",              -- 222957957 (0x0D4A1185)

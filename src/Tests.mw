@@ -11,9 +11,9 @@ use Std.Collections.Vector as V
 @cfg(test)
 use Std.St as St
 @cfg(test)
-use crc32.Cases (cases)
+use Crc32.Cases (cases)
 @cfg(test)
-use crc32.Crc32
+use Crc32.Crc32
 
 @cfg(test)
 fun digit i = toInt (stringByteAt cases i) - 48
