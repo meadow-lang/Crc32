@@ -9,7 +9,7 @@ This package is a port of Rust's
 ## Install
 
 ```sh
-meadow add mcdearman/MeadowCrc32
+meadow add mcdearman/Crc32
 ```
 
 ## Use
