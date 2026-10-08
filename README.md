@@ -1,7 +1,7 @@
 # crc32
 
 The CRC-32 checksum used by zlib, gzip, PNG and Ethernet (IEEE 802.3), for
-[Meadow](https://github.com/mcdearman/meadow).
+[Meadow](https://github.com/meadow-lang/meadow).
 
 This package is a port of Rust's
 [`crc32fast`](https://github.com/srijs/rust-crc32fast) 1.5.2.
@@ -9,7 +9,7 @@ This package is a port of Rust's
 ## Install
 
 ```sh
-meadow add mcdearman/Crc32
+meadow add meadow-lang/Crc32
 ```
 
 ## Use
