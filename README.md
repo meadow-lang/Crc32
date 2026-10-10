@@ -6,6 +6,14 @@ The CRC-32 checksum used by zlib, gzip, PNG and Ethernet (IEEE 802.3), for
 This package is a port of Rust's
 [`crc32fast`](https://github.com/srijs/rust-crc32fast) 1.5.2.
 
+## AI disclosure
+
+Crc32 is written with AI coding agents: Anthropic's Claude, through Claude Code.
+Most of the code, the tests, the documentation and the commit messages in this
+repository were written by an agent, under the direction of the project's
+author, who decides the design and what goes in. Read it, and rely on it, with
+that in mind.
+
 ## Install
 
 ```sh
