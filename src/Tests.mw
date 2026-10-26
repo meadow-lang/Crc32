@@ -44,14 +44,14 @@ fun unhex s =
 @cfg(test)
 fun decimal s =
   let digitAt = \i -> toUInt64 (toInt (stringByteAt s i) - 48) in
-  let rec go i acc = if i >= stringByteLength s then acc else go (i + 1) (acc * toUInt64 10 + digitAt i) in
-  go 0 (toUInt64 0)
+  let rec go i acc =
+    if i >= stringByteLength s then acc else go (i + 1) (acc * toUInt64 10 + digitAt i)
+  in go 0 (toUInt64 0)
 
 @cfg(test)
 fun runCase i =
   let kind = fst (num i 1) in
-  if kind == 0
-  then
+  if kind == 0 then
     let input = str (i + 1) in
     let whole = str (snd input) in
     let split = num (snd whole) 3 in
@@ -65,8 +65,7 @@ fun runCase i =
     let want = [fst whole, fst pieces] in
     let got = ["${hash b}", "${finalize h2}"] in
     (fst input, want, got, snd pieces)
-  else if kind == 1
-  then
+  else if kind == 1 then
     let a = str (i + 1) in
     let b = str (snd a) in
     let expected = str (snd b) in
@@ -85,8 +84,7 @@ fun runCase i =
 
 @cfg(test)
 fun check i bad =
-  if i >= stringByteLength cases
-  then bad
+  if i >= stringByteLength cases then bad
   else
     match runCase i with
     | (input, expected, got, next) ->

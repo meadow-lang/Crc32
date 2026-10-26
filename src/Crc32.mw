@@ -16,23 +16,22 @@ def table =
     let t = St.newArray 256 (toUInt32 0) in
     let _ =
       St.forRange 0 256 (\n ->
-        let step = \c -> if bitAnd c (toUInt32 1) != toUInt32 0 then bitXor poly (c >> 1) else c >> 1 in
+        let step =
+          \c -> if bitAnd c (toUInt32 1) != toUInt32 0 then bitXor poly (c >> 1) else c >> 1
+        in
         let rec go k c = if k >= 8 then c else go (k + 1) (step c) in
         St.set t n (go 0 (toUInt32 n)))
-    in
-    St.freeze t)
+    in St.freeze t)
 
 -- `prev` extended by `bytes`.
 fun updateState prev (bytes : #[UInt8]) =
   let n = arrayLen bytes in
   let rec go i crc =
-    if i >= n
-    then crc
+    if i >= n then crc
     else
       let index = toInt (bitAnd (bitXor crc (toUInt32 (arrayGet bytes i))) (toUInt32 0xFF)) in
       go (i + 1) (bitXor (arrayGet table index) (crc >> 8))
-  in
-  bitXor (go 0 (bitXor prev ones)) ones
+  in bitXor (go 0 (bitXor prev ones)) ones
 
 -- The checksum of `bytes`.
 @pub fun hash (bytes : #[UInt8]) = updateState (toUInt32 0) bytes
@@ -41,7 +40,10 @@ fun updateState prev (bytes : #[UInt8]) =
 @pub fun hashString s = hash (stringToBytes s)
 
 -- A checksum being computed: the state so far, and how many bytes it covers.
-@pub record Hasher = { state : UInt32, amount : UInt64 }
+@pub record Hasher = {
+  state : UInt32,
+  amount : UInt64
+}
 
 @pub def newHasher = Hasher { state = toUInt32 0, amount = toUInt64 0 }
 
@@ -82,31 +84,26 @@ fun multiply a b =
   let zero = toUInt32 0 in
   let one = toUInt32 1 in
   let rec go i p b2 =
-    if i >= 32
-    then p
+    if i >= 32 then p
     else
       let bit = bitAnd (a >> (31 - i)) one in
       let p2 = if bit != zero then bitXor p b2 else p in
       let b3 = if bitAnd b2 one != zero then bitXor (b2 >> 1) poly else b2 >> 1 in
       go (i + 1) p2 b3
-  in
-  go 0 zero b
+  in go 0 zero b
 
 -- The checksum of the bytes of `crc1` followed by those of `crc2`, which are
 -- `len2` long.
 @pub fun combineChecksums crc1 crc2 len2 =
   let zero = toUInt64 0 in
-  if len2 == zero
-  then crc1
+  if len2 == zero then crc1
   else
     let rec go i p =
-      if i >= 64 or (len2 >> i) == zero
-      then p
+      if i >= 64 or (len2 >> i) == zero then p
       else
         let set = bitAnd (len2 >> i) (toUInt64 1) != zero in
         go (i + 1) (if set then multiply (arrayGet x2n (i % 32)) p else p)
-    in
-    bitXor (go 0 crc1) crc2
+    in bitXor (go 0 crc1) crc2
 
 -- `a` extended by whatever `b` covered.
 @pub fun combine (a : Hasher) (b : Hasher) =
