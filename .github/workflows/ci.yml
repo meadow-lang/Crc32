@@ -1,0 +1,53 @@
+# What `master` has to pass: the package's tests on each of Meadow's
+# runtimes, and the formatter with nothing to change. Meadow is the nightly.
+#
+# It runs on every pull request, and on the merge queue's own commit -- the
+# branch as it will be once it is on `master` -- so nothing reaches
+# `master` that was not tested as it will have it. `master` takes pull
+# requests only, and this check is required of them.
+
+name: ci
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Meadow (nightly)
+        # The installer asks GitHub's API for the release; with a token it is
+        # not held to the limit on unauthenticated requests.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/meadow-lang/meadow/master/scripts/meadowup-init.sh | sh -s -- --version nightly
+          echo "$HOME/.meadow/bin" >> "$GITHUB_PATH"
+
+      - name: Versions
+        run: |
+          meadow --version
+          clang --version
+
+      - name: Format
+        run: meadow fmt --check src
+
+      - name: Test (Glade)
+        run: meadow test
+      - name: Test (Silo)
+        run: meadow test --runtime silo
